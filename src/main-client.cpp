@@ -4,11 +4,11 @@
 #include <string.h>
 
 #define PORT 8080
-int main(){    
-    auto hello = "Hello from server";
+
+int main()
+{
+    auto hello = "Hello from client";
     int hello_len =  strlen(hello);
-
-
 
     // Initialize Winsock
     WSADATA wsaData;
@@ -35,41 +35,25 @@ int main(){
         exit(EXIT_FAILURE);
     }
     
-
     sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_port = htons( PORT );
     memset(addr.sin_zero, '\0', sizeof addr.sin_zero);
 
     int addrlen = sizeof(addr);
+
     
-    if (bind(server, (sockaddr *)&addr, addrlen ) == SOCKET_ERROR) {
-        perror("Bind error");
-        exit(EXIT_FAILURE);
+    if (connect(server, (sockaddr *)&addr, addrlen) < 0)
+    {
+        printf("\nConnection Failed \n");
+        return -1;
     }
 
-    if (listen(server, 10) == SOCKET_ERROR) {
-        perror("Listen error");
-        exit(EXIT_FAILURE);
-    }
-
-    SOCKET client;
-    while(true) {
-        printf("\n================================================");
-        printf("\n============== ... Waiting ... =================");
-        printf("\n================================================\n\n");
-        if ((client = accept(server, (sockaddr *)&addr, &addrlen)) == INVALID_SOCKET) {
-            perror("Accept error");
-            exit(EXIT_FAILURE);
-        }
-        
-        char buffer[3000] = {0};
-        auto valread = recv( client , buffer, 3000, 0);
-        printf("Client: %s\n", buffer);
-        send(client , hello , hello_len, 0);
-        printf("Sent message to client\n");
-        closesocket(client);
-    }
+    send(server , hello , strlen(hello) , 0 );
+    printf("Sent message to server\n");
+    char buffer[3000] = {0};
+    auto valread = recv( server , buffer, 3000, 0);
+    printf("Server: %s\n",buffer );
     return 0;
 }
