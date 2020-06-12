@@ -2,12 +2,45 @@
 #include <stdlib.h>
 #include <winsock2.h>
 #include <string.h>
+#include <iostream>
+#include <string>
+#include <sstream>
 
 #define PORT 8080
-int main(){    
-    auto hello = "Hello from server";
-    int hello_len =  strlen(hello);
 
+bool writeDataToClient(SOCKET socket, const char *data, int datalen) {
+    const char *pData = data;
+
+    printf("Sent: %s\n", pData);
+    while (datalen > 0){
+        int numSent = send(socket, pData, datalen, 0);
+        if (numSent <= 0){
+            if (numSent == 0){
+                printf("The client was not written to: disconnected\n");
+            } else {
+                perror("The client was not written to");
+            }
+            return false;
+        }
+        pData += numSent;
+        datalen -= numSent;
+    }
+
+
+    return true;
+}
+
+bool writeStrToClient(SOCKET socket, const char *str) {
+    printf("] Sent: %s\n", str);
+
+    return writeDataToClient(socket, str, strlen(str));
+}
+
+int main(){    
+    /*auto *hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
+    int hello_len =  strlen(hello);*/
+
+    
 
 
     // Initialize Winsock
@@ -55,6 +88,42 @@ int main(){
     }
 
     SOCKET client;
+
+    long fsize;
+    FILE *fp = fopen("../html/index.html", "rb");
+    if (!fp){
+        perror("The file was not opened");    
+        exit(1);    
+    }
+
+    printf("The file was opened\n");
+
+    if (fseek(fp, 0, SEEK_END) == -1){
+        perror("The file was not seeked");
+        exit(1);
+    }
+
+    fsize = ftell(fp);
+    if (fsize == -1) {
+        perror("The file size was not retrieved");
+        exit(1);
+    }
+    rewind(fp);
+
+    char *msg = (char*) malloc(fsize);
+    if (!msg){
+        perror("The file buffer was not allocated\n");
+        exit(1);
+    }
+
+    if (fread(msg, fsize, 1, fp) != 1){
+        perror("The file was not read\n");
+        exit(1);
+    }
+    fclose(fp);
+
+    printf("The file size is %ld\n", fsize);
+
     while(true) {
         printf("\n================================================");
         printf("\n============== ... Waiting ... =================");
@@ -67,9 +136,36 @@ int main(){
         char buffer[3000] = {0};
         auto valread = recv( client , buffer, 3000, 0);
         printf("Client: %s\n", buffer);
-        send(client , hello , hello_len, 0);
+        //send(client , hello , hello_len, 0);
+        
+
+        if (!writeStrToClient(client, "HTTP/1.1 200 OK\r\n")){
+            closesocket(client);
+            continue;
+        }
+
+        char clen[40];
+        sprintf(clen, "Content-length: %ld\r\n", fsize);
+        if (!writeStrToClient(client, clen)){
+            closesocket(client);
+            continue;
+        }
+
+        if (!writeStrToClient(client, "Content-Type: text/html\r\n")){
+            closesocket(client);
+            continue;
+        }
+
+        if (!writeDataToClient(client, msg, fsize)){
+            closesocket(client);
+            continue;
+        }
+
         printf("Sent message to client\n");
         closesocket(client);
     }
+
+    closesocket(server);
+    WSACleanup();
     return 0;
 }

@@ -7,8 +7,8 @@ set(SOURCE_FILES src/main.cpp)
 add_executable(server ${SOURCE_FILES}) 
 
 
-add_executable(client src/main_client.cpp) 
+#add_executable(client src/main-client.cpp) 
 
 find_library(ws2_32 NAMES ws2_32)
 target_link_libraries(server ws2_32)
-target_link_libraries(client ws2_32)
+#target_link_libraries(client ws2_32)
