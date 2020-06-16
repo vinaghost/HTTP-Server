@@ -39,6 +39,7 @@
         "xlocinfo": "cpp",
         "xlocnum": "cpp",
         "xtr1common": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "vector": "cpp"
     }
 }
