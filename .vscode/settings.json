@@ -40,6 +40,9 @@
         "xlocnum": "cpp",
         "xtr1common": "cpp",
         "fstream": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "mutex": "cpp",
+        "thread": "cpp",
+        "functional": "cpp"
     }
 }

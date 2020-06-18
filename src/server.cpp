@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <functional>
 
 #include "server.h"
 #include "throw_exception.hpp"
@@ -8,8 +9,8 @@
 
 Server::Server() :
     result(NULL),
-    sck_server(INVALID_SOCKET),
-    sck_client(INVALID_SOCKET)
+    server_sck(INVALID_SOCKET),
+    stop_server(false)
 {
     startWSA();
 
@@ -27,61 +28,87 @@ Server::Server() :
 Server::~Server() {
     stop();
 }
-void Server::run() {   
-    SOCKET client;
+void Server::run() {  
+    server_thread = std::thread(&Server::handleConnection, this);
+    server_thread.detach();
 
-    while(true) {
-        printf("\n================================================");
-        printf("\n============== ... Waiting ... =================");
-        printf("\n================================================\n\n");
-
-        client = acceptSocket();
-
-        auto s = receiveSocket(client);
-        
-        std::cout << "Client sent: \n";
-        std::cout << s << "\n";
-
-
-        if (!writeStrToClient(client, "HTTP/1.1 200 OK\r\n")){
-            closesocket(client);
-            continue;
-        }
-
-        auto msg = getContentFile("index.html");
-        
-        
-        char clen[40];
-        sprintf(clen, "Content-length: %ld\r\n", msg.length());
-        if (!writeStrToClient(client, clen)){
-            closesocket(client);
-            continue;
-        }
-
-        if (!writeStrToClient(client, "Content-Type: text/html\r\n")){
-            closesocket(client);
-            continue;
-        }
-
-        if (!writeDataToClient(client, msg.c_str(), msg.length())){
-            closesocket(client);
-            continue;
-        }
-
-        printf("Sent message to client\n");
-        closesocket(client);
+    std::string command;
+    do {
+        std::cout << "Type quit to stop server\n";
+        std::cin >> command;
     }
+    while ( command.compare("quit") != 0);
 }
 void Server::stop() {
-    if( sck_client != INVALID_SOCKET ) {
-        closesocket(sck_server);
+    stop_server = true;
+    if( server_sck != INVALID_SOCKET ) {
+        closesocket(server_sck);
     }
 
-    if( sck_client != INVALID_SOCKET ) {
-        closesocket(sck_client);
+    while(!client_sck.empty()) {
+        if( client_sck.back() != INVALID_SOCKET) {
+            shutdownSocket(client_sck.back());
+            closesocket(client_sck.back());
+        }
+        client_sck.pop_back();
     }
+
     freeaddrinfo(result);
     WSACleanup();
+}
+
+void Server::handleConnection() {
+    std::cout << "Server started\n"; 
+    while(!stop_server) {
+        
+        client_sck.push_back(acceptSocket());
+        
+        std::thread t(&Server::handleClient, this, client_sck.size() - 1);
+        t.detach();
+    }
+}
+
+void Server::handleClient(unsigned int id) {
+    auto client  = client_sck[id];
+
+    std::lock_guard<std::mutex> guard(client_mutex);
+    /*auto s = receiveSocket(client);
+        
+    std::cout << "Client sent: \n";
+    std::cout << s << "\n";*/
+
+    if (!writeStrToClient(client, "HTTP/1.1 200 OK\r\n")){
+        client_sck.erase(client_sck.begin() + id);
+        closesocket(client);
+        return;
+    }
+
+    auto msg = getContentFile("index.html");
+        
+        
+    char clen[40];
+    sprintf(clen, "Content-length: %ld\r\n", msg.length());
+    if (!writeStrToClient(client, clen)){
+        client_sck.erase(client_sck.begin() + id);
+        closesocket(client);
+        return;
+    }
+
+    if (!writeStrToClient(client, "Content-Type: text/html\r\n")){
+        client_sck.erase(client_sck.begin() + id);
+        closesocket(client);
+        return;
+    }
+
+    if (!writeDataToClient(client, msg.c_str(), msg.length())){
+        client_sck.erase(client_sck.begin() + id);
+        closesocket(client);
+        return;
+    }
+
+    printf("Sent message to client\n");
+    client_sck.erase(client_sck.begin() + id);
+    closesocket(client);
 }
 
 void Server::startWSA() {
@@ -112,9 +139,9 @@ void Server::getAddressinfo() {
 }
 
 void Server::createSocket() {
-    sck_server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    server_sck = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     try {
-        if ( sck_server == INVALID_SOCKET ) {
+        if ( server_sck == INVALID_SOCKET ) {
             throw SocketCreate(WSAGetLastError());
         }
     }
@@ -126,7 +153,7 @@ void Server::createSocket() {
 }
 
 void Server::bindSocket() {    
-    auto iResult = bind( sck_server, result->ai_addr, (int)result->ai_addrlen);
+    auto iResult = bind( server_sck, result->ai_addr, (int)result->ai_addrlen);
     
     try {
         if ( iResult == SOCKET_ERROR ) {
@@ -141,7 +168,7 @@ void Server::bindSocket() {
 }
 
 void Server::listenSocket() {    
-    auto iResult = listen(sck_server, SOMAXCONN);
+    auto iResult = listen(server_sck, SOMAXCONN);
 
     try {
         if ( iResult == SOCKET_ERROR ) {
@@ -156,7 +183,12 @@ void Server::listenSocket() {
 }
 
 SOCKET Server::acceptSocket() {
-    auto client = accept(sck_server, NULL, NULL);
+    sockaddr_in addr;
+    int addrlen = sizeof(addr);
+    auto client = accept(server_sck, (sockaddr*)&addr, &addrlen);
+
+    char *ip = inet_ntoa(addr.sin_addr);
+    std::cout << "Accepted Connection from :  " << ip << "\n";
 
     try {
         if (client == INVALID_SOCKET) {
@@ -231,6 +263,8 @@ std::string Server::getContentFile(const std::string &filename) {
 
 bool Server::writeDataToClient(SOCKET socket, const char *data, int datalen) {
     const char *pData = data;
+
+    std::cout << pData << "\n";
 
     while (datalen > 0){
         int numSent = send(socket, pData, datalen, 0);
