@@ -5,7 +5,8 @@
 
 #include "server.h"
 #include "throw_exception.hpp"
-
+#include "request.h"
+#include "response.h"
 
 Server::Server() :
     result(NULL),
@@ -68,47 +69,40 @@ void Server::handleConnection() {
     }
 }
 
-void Server::handleClient(unsigned int id) {
+void Server::handleClient(size_t id) {
     auto client  = client_sck[id];
 
-    std::lock_guard<std::mutex> guard(client_mutex);
-    /*auto s = receiveSocket(client);
+        std::lock_guard<std::mutex> guard(client_mutex);
+        auto s = receiveSocket(client);
+            
+        std::cout << "Client sent: \n";
+        std::cout << s << "\n";
+        std::cout << "==========================\n";
+        Request h(s);
         
-    std::cout << "Client sent: \n";
-    std::cout << s << "\n";*/
+        //std::string str("<html><head><title>18120218</title></head><body>18120218</body></html>");
+        auto msg = getContentFile("index.html");
 
-    if (!writeStrToClient(client, "HTTP/1.1 200 OK\r\n")){
+        Response resp(msg.length());
+
+        if(!writeStrToClient(client, resp.getResponse())) {
+            client_sck.erase(client_sck.begin() + id);
+            closesocket(client);
+            return;
+        }
+
+        if(!writeStrToClient(client, msg)) {
+            client_sck.erase(client_sck.begin() + id);
+            closesocket(client);
+            return;
+        }
+    
+
+        printf("Sent message to client\n");
         client_sck.erase(client_sck.begin() + id);
         closesocket(client);
         return;
-    }
-
-    auto msg = getContentFile("index.html");
-        
-        
-    char clen[40];
-    sprintf(clen, "Content-length: %ld\r\n", msg.length());
-    if (!writeStrToClient(client, clen)){
-        client_sck.erase(client_sck.begin() + id);
-        closesocket(client);
-        return;
-    }
-
-    if (!writeStrToClient(client, "Content-Type: text/html\r\n")){
-        client_sck.erase(client_sck.begin() + id);
-        closesocket(client);
-        return;
-    }
-
-    if (!writeDataToClient(client, msg.c_str(), msg.length())){
-        client_sck.erase(client_sck.begin() + id);
-        closesocket(client);
-        return;
-    }
-
-    printf("Sent message to client\n");
-    client_sck.erase(client_sck.begin() + id);
-    closesocket(client);
+    
 }
 
 void Server::startWSA() {
@@ -263,9 +257,7 @@ std::string Server::getContentFile(const std::string &filename) {
 
 bool Server::writeDataToClient(SOCKET socket, const char *data, int datalen) {
     const char *pData = data;
-
-    std::cout << pData << "\n";
-
+    
     while (datalen > 0){
         int numSent = send(socket, pData, datalen, 0);
         if (numSent <= 0){

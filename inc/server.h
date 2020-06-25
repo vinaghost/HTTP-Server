@@ -1,3 +1,6 @@
+#ifndef _SERVER_INC
+#define _SERVER_INC
+
 #include <string>
 #include <vector>
 #include <thread>
@@ -33,7 +36,7 @@ class Server {
 
 
         void handleConnection();
-        void handleClient(unsigned int id);
+        void handleClient(size_t id);
 
         void startWSA();
         void getAddressinfo();
@@ -54,3 +57,5 @@ class Server {
 
         std::string readFileBinary(const std::string &fileName);    
 };
+
+#endif
