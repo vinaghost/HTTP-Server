@@ -72,37 +72,61 @@ void Server::handleConnection() {
 void Server::handleClient(size_t id) {
     auto client  = client_sck[id];
 
-        std::lock_guard<std::mutex> guard(client_mutex);
-        auto s = receiveSocket(client);
-            
-        std::cout << "Client sent: \n";
-        std::cout << s << "\n";
-        std::cout << "==========================\n";
-        Request h(s);
-        
-        //std::string str("<html><head><title>18120218</title></head><body>18120218</body></html>");
-        auto msg = getContentFile("index.html");
+    std::lock_guard<std::mutex> guard(client_mutex);
+    auto s = receiveSocket(client);
+    Request req(s);
 
+    if(req.isGetMethod()) {
+        auto msg = getContentFile("index.html");
         Response resp(msg.length());
 
-        if(!writeStrToClient(client, resp.getResponse())) {
+        if (!writeStrToClient(client, resp.getResponse())) {
             client_sck.erase(client_sck.begin() + id);
             closesocket(client);
             return;
         }
 
-        if(!writeStrToClient(client, msg)) {
+        if (!writeStrToClient(client, msg)) {
             client_sck.erase(client_sck.begin() + id);
             closesocket(client);
             return;
         }
-    
 
         printf("Sent message to client\n");
         client_sck.erase(client_sck.begin() + id);
         closesocket(client);
         return;
-    
+    }
+    else if (req.isPostMethod()) {
+        const auto content =  req.getContent();
+        std::string msg;
+
+        if( content.at("username").compare("admin") == 0 && content.at("password").compare("admin") == 0) {
+            msg = "SUCCESS";
+        }
+        else {
+            msg = "404";
+        }
+
+        Response resp(msg.length());
+
+        if (!writeStrToClient(client, resp.getResponse())) {
+            client_sck.erase(client_sck.begin() + id);
+            closesocket(client);
+            return;
+        }
+
+        if (!writeStrToClient(client, msg)) {
+            client_sck.erase(client_sck.begin() + id);
+            closesocket(client);
+            return;
+        }
+
+        printf("Sent message to client\n");
+        client_sck.erase(client_sck.begin() + id);
+        closesocket(client);
+        return;
+    }
 }
 
 void Server::startWSA() {

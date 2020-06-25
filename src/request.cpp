@@ -2,7 +2,10 @@
 #include "request.h"
 #include "boost/algorithm/string.hpp"
 
-Request::Request(const std::string &req) {
+Request::Request(const std::string &req) :
+    bPost(false),
+    bGet(false)
+{
     parseData(req);
 }
 void Request::showData() {
@@ -49,13 +52,28 @@ void Request::parseData(const std::string &data) {
         std::string req;
         tmp >> req;
         parseMethod(req);
+
+        bGet = true;
     }
     else if ( mData["Method"] == "POST") {
         std::getline(request, header);
         parseMethod(header);
+
+        bPost = true;
     }
 }
 
+bool Request::isGetMethod() {
+    return bGet;
+}
+
+bool Request::isPostMethod() {
+    return bPost;
+}
+
+std::unordered_map<std::string, std::string> const &Request::getContent() const {
+    return content;
+}
 void Request::parseMethod(const std::string &req) {
     std::string request(req);
     for (auto &i : request) {
