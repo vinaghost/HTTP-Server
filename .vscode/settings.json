@@ -91,6 +91,23 @@
         "xtree": "cpp",
         "*.ipp": "cpp"
     },
-    "python.pythonPath": "D:\\Python 3\\python.exe",
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "cSpell.words": [
+        "Atul",
+        "Kappua",
+        "Manish",
+        "Ngh",
+        "Nghệ",
+        "bootstrapcdn",
+        "cdnjs",
+        "csshint",
+        "girllight",
+        "hairgirl",
+        "handboy",
+        "linkedin",
+        "maxcdn",
+        "stackpath",
+        "swinghair",
+        "webcoderskull"
+    ]
 }
