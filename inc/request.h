@@ -5,8 +5,6 @@
 
 class Request : public Header {
     private:
-        
-        std::unordered_map<std::string, std::string> content;
         bool bGet;
         bool bPost;
 
@@ -16,8 +14,10 @@ class Request : public Header {
         Request(const std::string &req);
         bool isPostMethod();
         bool isGetMethod();
-        std::unordered_map<std::string, std::string> const &getContent() const;
+        std::unordered_map<std::string, std::string> const &getHeader() const;
+        std::unordered_map<std::string, std::string> const &getData() const;
         void showData();
+
 };
 
 #endif

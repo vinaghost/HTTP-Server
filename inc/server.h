@@ -10,7 +10,7 @@
 
 
 #define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT "8080"
+#define DEFAULT_PORT "80"
 
 
 class Server {  

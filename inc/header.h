@@ -9,7 +9,9 @@
 class Header {
 
     protected:
+        std::unordered_map<std::string, std::string> mHeader;
         std::unordered_map<std::string, std::string> mData;
+
     public:
         Header() = default;
 
