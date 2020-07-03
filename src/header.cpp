@@ -6,9 +6,14 @@ void Header::showData() {
         std::cout << "] " << i.first << " - " << i.second << "\n";
     }
 
-    std::cout << "\n==========Data==============\n";
-    for( auto &i : mData) {
-        std::cout << "] " << i.first << " - " << i.second << "\n";
+    std::cout << "=============Data==============\n";
+    if( mData.empty()) {
+        std::cout << "] nothing" << "\n";
     }
-    std::cout << "\n\n\n";
+    else {
+        for( auto &i : mData) {
+            std::cout << "] " << i.first << " - " << i.second << "\n";
+        }
+    }
+    std::cout << "===============================\n\n";
 }

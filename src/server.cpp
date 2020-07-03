@@ -9,6 +9,26 @@
 #include "response.h"
 
 Server::Server() :
+    port("80"),
+    result(NULL),
+    server_sck(INVALID_SOCKET),
+    stop_server(false)
+{
+    startWSA();
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+
+    getAddressinfo();
+    createSocket();   
+    bindSocket();
+    listenSocket();
+}
+Server::Server(PCSTR port) :
+    port(port),
     result(NULL),
     server_sck(INVALID_SOCKET),
     stop_server(false)
@@ -118,7 +138,7 @@ void Server::handleClient(size_t id) {
         }
     }
     
-    printf("Sent message to client\n");
+    std::cout << "Sent message to client\n";
     client_sck.erase(client_sck.begin() + id);
     closesocket(client);
     return;
@@ -133,18 +153,18 @@ void Server::startWSA() {
     }
     catch (SocketError &e) {
         std::cout << e.what() << "\n";
+        abort();
     }
 }
 
 void Server::getAddressinfo() {
-    auto iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
+    auto iResult = getaddrinfo(NULL, port, &hints, &result);
     try {
         if ( iResult != 0 ) {
-            printf("getaddrinfo failed with error: %d\n", iResult);
-            
+            throw GetAddressinfo(WSAGetLastError());            
         }
     }
-    catch (SocketError &e) {
+    catch (GetAddressinfo &e) {
         std::cout << e.what() << "\n";
         stop();
         abort();
@@ -201,7 +221,7 @@ SOCKET Server::acceptSocket() {
     auto client = accept(server_sck, (sockaddr*)&addr, &addrlen);
 
     char *ip = inet_ntoa(addr.sin_addr);
-    std::cout << "Accepted Connection from :  " << ip << "\n";
+    std::cout << "Accepted connection from :  " << ip << ":" << addr.sin_port <<"\n";
 
     try {
         if (client == INVALID_SOCKET) {
@@ -271,7 +291,7 @@ void Server::shutdownSocket(SOCKET client) {
 }
 
 std::string Server::getContentFile(const std::string &filename) {
-    return std::string(readFileBinary("../html/" + filename));
+    return readFileBinary("../html/" + filename);
 }
 
 bool Server::writeDataToClient(SOCKET socket, const char *data, int datalen) {
@@ -281,12 +301,13 @@ bool Server::writeDataToClient(SOCKET socket, const char *data, int datalen) {
         int numSent = send(socket, pData, datalen, 0);
         if (numSent <= 0){
             if (numSent == 0){
-                printf("The client was not written to: disconnected\n");
+                std::cout << "The client was not written to: disconnected\n";
             } else {
-                perror("The client was not written to");
+                std::cout << "The client was not written to";
             }
             return false;
         }
+        
         pData += numSent;
         datalen -= numSent;
     }

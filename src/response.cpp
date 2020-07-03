@@ -26,15 +26,19 @@ void Response::set(unsigned int code, unsigned long int size) {
         mHeader.insert(std::make_pair("Content-Length", sSize));
 
     }  
+    createResponse();
+
 }
 void Response::set(unsigned int code, const std::string &content) {
     set(code);
 
     if ( code == 301) {
-        mHeader.insert(std::make_pair("Status", "HTTP/1.1 301 Move Permanently"));
+        mHeader.insert(std::make_pair("Status", "HTTP/1.1 301 Moved Permanently"));
         mHeader.insert(std::make_pair("Location", content));
         
     }
+
+    createResponse();
 }
 void Response::reset() {
     code = 0;
@@ -44,7 +48,7 @@ void Response::reset() {
     ss.str("");
 }
 
-std::string Response::getResponse() {
+void Response::createResponse() {
     ss.str("");
 
     if( code == 200 || code == 404) {
@@ -54,14 +58,17 @@ std::string Response::getResponse() {
         ss << "Content-Length: " << mHeader["Content-Length"] << "\r\n\r\n";
 
     }
-    else if ( code == 301 ) {
+    else if ( code == 301) {
         ss << mHeader["Status"] << "\r\n";
-        ss << "Location: /" << mHeader["Location"] << "\r\n\r\n"; 
-        ss << "Location: /" << mHeader["Location"] << "\r\n\r\n"; 
+        ss << "Location: /" << mHeader["Location"] << "\r\n\r\n."; 
 
     }
+    
+}
+std::string Response::getResponse() {
     return ss.str();
 }
+
 void Response::showData() {
     std::cout << "[Response]";
     Header::showData();
