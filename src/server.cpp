@@ -76,6 +76,8 @@ void Server::stop() {
 
     freeaddrinfo(result);
     WSACleanup();
+
+    std::cout << "Server stopped";
 }
 
 void Server::handleConnection() {
